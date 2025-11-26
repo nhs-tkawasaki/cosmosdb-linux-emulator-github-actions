@@ -25,7 +25,7 @@ namespace dotnet_app.Tests
             {
                 HttpClientFactory = () => new HttpClient(new HttpClientHandler()
                 {
-                    ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+                    //ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
                 }),
                 ConnectionMode = ConnectionMode.Gateway,
             };
