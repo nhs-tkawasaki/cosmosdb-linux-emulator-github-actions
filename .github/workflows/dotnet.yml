@@ -72,30 +72,22 @@ jobs:
             sleep 2
           done
 
-          # 2. 安定したタイミングで一度だけ証明書を取得
-          echo "Exporting certificate from Cosmos DB Emulator..."
-          openssl s_client -connect localhost:8081 -showcerts </dev/null \
+          # 2. 「CA」として配布されている pem があるかを試す
+          echo "=== Trying to fetch emulator CA pem ==="
+          curl -k https://localhost:8081/_explorer/emulator.pem -o cosmos_emulator_ca.crt || echo "failed to fetch emulator pem"
+
+          if [ -s cosmos_emulator_ca.crt ]; then
+            echo "Fetched emulator CA pem, registering as trusted CA..."
+            sudo cp cosmos_emulator_ca.crt /usr/local/share/ca-certificates/cosmos_emulator_ca.crt
+            sudo update-ca-certificates
+          else
+            echo "emulator.pem not available, falling back to s_client-extracted cert"
+            openssl s_client -connect localhost:8081 -showcerts </dev/null \
             | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > cosmos_emulator.crt
 
-          echo "Certificate subject / issuer:"
-          openssl x509 -in cosmos_emulator.crt -noout -subject -issuer
-
-          # 3. CA として登録
-          sudo cp cosmos_emulator.crt /usr/local/share/ca-certificates/
-          sudo update-ca-certificates
-
-          echo "Registered CA entries:"
-          ls -l /etc/ssl/certs | grep cosmos || echo "no cosmos entries in /etc/ssl/certs"
-
-          # 4. 検証（この時点で verify が通るか確認）
-          echo "Verifying TLS connection with system trust store..."
-          echo | openssl s_client -connect localhost:8081 -verify_return_error || true
-
-          echo "===== FULL CERT CHAIN FROM EMULATOR ====="
-          openssl s_client -connect localhost:8081 -showcerts </dev/null
-
-          echo "===== cosmos_emulator.crt subject / issuer / self-signed? ====="
-          openssl x509 -in cosmos_emulator.crt -noout -subject -issuer -text | sed -n '1,20p'
+            sudo cp cosmos_emulator.crt /usr/local/share/ca-certificates/cosmos_emulator.crt
+            sudo update-ca-certificates
+          fi
 
           echo "=== openssl verify with ca-certificates.crt ==="
           openssl verify -CAfile /etc/ssl/certs/ca-certificates.crt cosmos_emulator.crt || echo "verify failed"
