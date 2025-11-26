@@ -63,10 +63,14 @@ jobs:
           cat cosmos_emulator_raw.txt
           
           openssl s_client -connect localhost:8081 </dev/null | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > cosmos_emulator.crt
+          openssl x509 -in cosmos_emulator.crt -noout -subject -issuer          
           
           sudo cp cosmos_emulator.crt /usr/local/share/ca-certificates/
           sudo update-ca-certificates
 
-          openssl verify -CAfile /etc/ssl/certs/ca-certificates.crt cosmos_emulator.crt
+          ls -l /etc/ssl/certs | grep cosmos
+
+          # openssl verify -CAfile /etc/ssl/certs/ca-certificates.crt cosmos_emulator.crt
+          echo | openssl s_client -connect localhost:8081 -verify_return_error
 
           cd dotnet-app && dotnet test --no-build --verbosity normal
