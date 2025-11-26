@@ -57,20 +57,38 @@ jobs:
 
       - name: Run tests
         run: |
-          sudo apt update && sudo apt install -y openssl
+          sudo apt update && sudo apt install -y openssl curl
 
-          openssl s_client -connect localhost:8081 -showcerts </dev/null > cosmos_emulator_raw.txt
-          cat cosmos_emulator_raw.txt
-          
-          openssl s_client -connect localhost:8081 </dev/null | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > cosmos_emulator.crt
-          openssl x509 -in cosmos_emulator.crt -noout -subject -issuer          
-          
+          # 1. Cosmos Emulator の HTTPS エンドポイントが安定するまで待つ
+          echo "Waiting for Cosmos DB Emulator to be ready..."
+          for i in $(seq 1 30); do
+            # readiness 的なエンドポイントを叩く（失敗しても無視）
+            if curl -k --silent https://localhost:8081/ >/dev/null 2>&1; then
+              echo "Cosmos DB Emulator is responding over HTTPS."
+              break
+            fi
+            echo "  still not ready (try $i)..."
+            sleep 2
+          done
+
+          # 2. 安定したタイミングで一度だけ証明書を取得
+          echo "Exporting certificate from Cosmos DB Emulator..."
+          openssl s_client -connect localhost:8081 -showcerts </dev/null \
+            | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > cosmos_emulator.crt
+
+          echo "Certificate subject / issuer:"
+          openssl x509 -in cosmos_emulator.crt -noout -subject -issuer
+
+          # 3. CA として登録
           sudo cp cosmos_emulator.crt /usr/local/share/ca-certificates/
           sudo update-ca-certificates
 
-          ls -l /etc/ssl/certs | grep cosmos
+          echo "Registered CA entries:"
+          ls -l /etc/ssl/certs | grep cosmos || echo "no cosmos entries in /etc/ssl/certs"
 
-          # openssl verify -CAfile /etc/ssl/certs/ca-certificates.crt cosmos_emulator.crt
+          # 4. 検証（この時点で verify が通るか確認）
+          echo "Verifying TLS connection with system trust store..."
           echo | openssl s_client -connect localhost:8081 -verify_return_error
 
+          # 5. テスト実行
           cd dotnet-app && dotnet test --no-build --verbosity normal
