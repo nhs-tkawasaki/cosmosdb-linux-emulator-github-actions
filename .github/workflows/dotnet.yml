@@ -26,6 +26,7 @@ jobs:
           - 8081:8081
         env:
           PROTOCOL: https
+          NODE_TLS_REJECT_UNAUTHORIZED: "0"
 
     env:
       COSMOSDB_CONNECTION_STRING: ${{ secrets.COSMOSDB_CONNECTION_STRING }}
