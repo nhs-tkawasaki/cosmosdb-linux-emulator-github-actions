@@ -91,5 +91,11 @@ jobs:
           echo "Verifying TLS connection with system trust store..."
           echo | openssl s_client -connect localhost:8081 -verify_return_error || true
 
+          echo "===== FULL CERT CHAIN FROM EMULATOR ====="
+          openssl s_client -connect localhost:8081 -showcerts </dev/null
+
+          echo "===== cosmos_emulator.crt subject / issuer / self-signed? ====="
+          openssl x509 -in cosmos_emulator.crt -noout -subject -issuer -text | sed -n '1,20p'
+
           # 5. テスト実行
           cd dotnet-app && dotnet test --no-build --verbosity normal
