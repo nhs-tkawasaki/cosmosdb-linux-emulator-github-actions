@@ -97,5 +97,8 @@ jobs:
           echo "===== cosmos_emulator.crt subject / issuer / self-signed? ====="
           openssl x509 -in cosmos_emulator.crt -noout -subject -issuer -text | sed -n '1,20p'
 
+          echo "=== openssl verify with ca-certificates.crt ==="
+          openssl verify -CAfile /etc/ssl/certs/ca-certificates.crt cosmos_emulator.crt || echo "verify failed"
+
           # 5. テスト実行
           cd dotnet-app && dotnet test --no-build --verbosity normal
